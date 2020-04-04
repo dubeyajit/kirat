@@ -50,8 +50,14 @@ RUN rm -rf /var/lib/apt/lists/*
 
 RUN curl -o /$DUMPFILE -SL "https://ftp.gnu.org/gnu/health/$DUMPFILE"
 
-#RUN adduser gnuhealth
-#USER gnuhealth
+RUN adduser gnuhealth
+
+RUN mkdir -p /usr/local/pgsql/data
+RUN chown -R postgres /usr/local/pgsql
+USER postgres
+RUN initdb -D /usr/local/pgsql/data
+#RUN su postgres -c 'pg_ctl start -D /usr/local/pgsql/data -l /usr/local/pgsql/data/serverlog'
+RUN pg_ctl start -D /usr/local/pgsql/data -l /usr/local/pgsql/data/serverlog
 
 
 
