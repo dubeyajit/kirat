@@ -60,9 +60,15 @@ RUN pg_ctl start -D /usr/local/pgsql/data -l /usr/local/pgsql/data/serverlog
 
 USER gnuhealth
 WORKDIR /home/gnuhealth/
-ENV DUMPFILE="gnuhealth-latest.tar.gz"
+ENV DUMPFILE="gnuhealth-3.6.3.tar.gz"
+ENV SIGFILE="gnuhealth-3.6.3.tar.gz.sig"
 
 RUN curl -o $DUMPFILE -SL "https://ftp.gnu.org/gnu/health/$DUMPFILE"
+RUN curl -o $SIGFILE -SL "https://ftp.gnu.org/gnu/health/$SIGFILE"
+
+RUN gpg --recv-key 0xC015E1AE00989199
+RUN gpg --with-fingerprint --list-keys 0xC015E1AE00989199
+RUN gpg --verify ${SIGFILE} ${DUMPFILE}
 
 # Set the default command to run when starting
 CMD [ "bash" ]
