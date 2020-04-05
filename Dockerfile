@@ -39,7 +39,6 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" > /etc
 # Use our local cache
 #RUN echo 'Acquire::http { Proxy "http://apt-cacher:9999"; };' >> /etc/apt/apt.conf.d/01proxy
 
-ENV DUMPFILE="gnuhealth-latest.tar.gz"
 #ENV DUMPFILE="gnuhealth-36rc3-demo.sql.gz"
 #ENV SQLFILE="health301.sql"
 
@@ -47,8 +46,6 @@ VOLUME /var/lib/postgresql
 RUN apt-get update && apt-get install -y --no-install-recommends gzip curl ca-certificates
 
 RUN rm -rf /var/lib/apt/lists/*
-
-RUN curl -o /$DUMPFILE -SL "https://ftp.gnu.org/gnu/health/$DUMPFILE"
 
 RUN adduser gnuhealth
 
@@ -59,7 +56,13 @@ RUN initdb -D /usr/local/pgsql/data
 #RUN su postgres -c 'pg_ctl start -D /usr/local/pgsql/data -l /usr/local/pgsql/data/serverlog'
 RUN pg_ctl start -D /usr/local/pgsql/data -l /usr/local/pgsql/data/serverlog
 
+#RUN chown -R gnuhealth $HOME
 
+USER gnuhealth
+WORKDIR /home/gnuhealth/
+ENV DUMPFILE="gnuhealth-latest.tar.gz"
+
+RUN curl -o $DUMPFILE -SL "https://ftp.gnu.org/gnu/health/$DUMPFILE"
 
 # Set the default command to run when starting
 CMD [ "bash" ]
