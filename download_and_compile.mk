@@ -1,5 +1,7 @@
 #GPG_VERSION=gnupg-2.2.3
 all:
+	#curl -o ${GPG_VERSION}.tar.bz2 -SL "https://gnupg.org/ftp/gcrypt/gnupg/${GPG_VERSION}.tar.bz2"
+	#curl -o ${GPG_VERSION}.tar.bz2.sig -SL "https://gnupg.org/ftp/gcrypt/gnupg/${GPG_VERSION}.tar.bz2.sig"
 	wget "https://gnupg.org/ftp/gcrypt/gnupg/${GPG_VERSION}.tar.bz2"
 	wget "https://gnupg.org/ftp/gcrypt/gnupg/${GPG_VERSION}.tar.bz2.sig"
 	tar xf ${GPG_VERSION}.tar.bz2
