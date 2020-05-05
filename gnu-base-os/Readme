@@ -1,0 +1,23 @@
+This dockerfile is create base os image which have all dependencies required
+by gnuhealth application
+
+Build dockerfile with tag
+docker build -t "buildname" .
+example: docker build -t ununtu-gnuhealth .
+
+Assumption that there is docker hub account
+execute below lines for pushing image into docker hub
+
+docker tag "buildname" "username"/"imagename":version
+example: docker tag ubunut-gnuhealth dubeyajit/ubuntu-gnuhealth:v01
+here dubeyajit is docker hub username and v01 is first version
+
+docker push "username"/"imagename":version
+example: docker push dubeyajit/ununtu-gnuhealth
+
+Now we are ready use base image
+Example #1:
+FROM dubeyajit/ubuntu-gnuhealth:v01
+
+Example #2:
+docker pull dubeyajit/ubuntu-gnuhealth:v01

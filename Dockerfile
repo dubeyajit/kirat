@@ -1,61 +1,55 @@
-FROM ubuntu:rolling
-LABEL Description="Image for building kirat"
+#
+# example Dockerfile for https://docs.docker.com/engine/examples/postgresql_service/
+#
 
-RUN apt update
-RUN apt install -y libldap2-dev rng-tools libbz2-dev zlib1g-dev libsqlite3-dev libreadline-dev pcscd scdaemon
-RUN apt install -y make wget file pinentry-tty ca-certificates lbzip2 bzip2 gcc
-RUN apt clean
+FROM dubeyajit/ubuntu-gnuhealth:v01
 
-RUN apt-get update && apt-get install -y --no-install-recommends gzip curl ca-certificates
-RUN apt-get -y install python-pip
+# Add the PostgreSQL PGP key to verify their Debian packages.
+# It should be the same key as https://www.postgresql.org/media/keys/ACCC4CF8.asc
+RUN apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
 
-#RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-#RUN apt-get update
-#RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" > /etc/apt/sources.list.d/pgdg.list
-#ARG DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y python3-pip 2to3 unoconv vim
-RUN pip3 install --user chardet python-dateutil 
+# Add PostgreSQL's repository. It contains the most recent stable release
+#     of PostgreSQL, ``9.3``.
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main" > /etc/apt/sources.list.d/pgdg.list
 
-WORKDIR /usr/bin
-RUN ln -si python3 python
-WORKDIR /
+# Install ``python-software-properties``, ``software-properties-common`` and PostgreSQL 11
+#  There are some warnings (in red) that show up during the build. You can hide
+#  them by prefixing each apt-get statement with DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y software-properties-common postgresql postgresql-client postgresql-contrib
 
-RUN pip3 install --user --upgrade pip setuptools wheel
+# Note: The official Debian and Ubuntu images automatically ``apt-get clean``
+# after each ``apt-get``
 
-RUN useradd -rm -d /home/gnuhealth -s /bin/bash -g root -G sudo -u 1000 gnuhealth
+# Run the rest of the commands as the ``postgres`` user created by the ``postgres-9.3`` package when it was ``apt-get installed``
+USER postgres
 
-USER gnuhealth
-WORKDIR /home/gnuhealth/
+# Create a PostgreSQL role named ``docker`` with ``docker`` as the password and
+# then create a database `docker` owned by the ``docker`` role.
+# Note: here we use ``&&\`` to run commands one after the other - the ``\``
+#       allows the RUN command to span multiple lines.
+RUN    /etc/init.d/postgresql start &&\
+    psql --command "CREATE USER docker WITH SUPERUSER CREATEDB PASSWORD 'docker';" &&\
+    createdb -O docker docker &&\
+    psql --command "CREATE USER gnuhealth WITH SUPERUSER CREATEDB PASSWORD 'gnuhealth';" &&\
+    createdb -O gnuhealth gnuhealth &&\
+    psql --command "CREATE USER tryton WITH SUPERUSER CREATEDB PASSWORD 'tryton';" &&\
+    createdb -O tryton tryton &&\
+    psql --command "CREATE DATABASE mydb WITH OWNER tryton;" &&\
+    psql --command "CREATE DATABASE health WITH OWNER tryton;"
 
-ENV BASEFILE="gnuhealth-3.6.3"
-ENV DUMPFILE="gnuhealth-3.6.3.tar.gz"
-ENV SIGFILE="gnuhealth-3.6.3.tar.gz.sig"
-ENV SETUPFILE="gnuhealth-setup-latest.tar.gz"
+# Adjust PostgreSQL configuration so that remote connections to the
+# database are possible.
+RUN echo "host all  all    0.0.0.0/0  md5" >> /etc/postgresql/10/main/pg_hba.conf
 
-RUN curl -o ${DUMPFILE} -SL "https://ftp.gnu.org/gnu/health/$DUMPFILE"
-RUN curl -o ${SIGFILE} -SL "https://ftp.gnu.org/gnu/health/$SIGFILE"
+# And add ``listen_addresses`` to ``/etc/postgresql/9.3/main/postgresql.conf``
+RUN echo "listen_addresses='*'" >> /etc/postgresql/10/main/postgresql.conf
 
-RUN gpg --recv-key 0xC015E1AE00989199
-RUN gpg --with-fingerprint --list-keys 0xC015E1AE00989199
-#RUN gpg --verify gnuhealth-3.6.3.tar.gz.sig gnuhealth-3.6.3.tar.gz
-RUN gpg --verify ${SIGFILE} ${DUMPFILE}
+# Expose the PostgreSQL port
+EXPOSE 5432
 
-RUN tar xzf ${DUMPFILE}
+# Add VOLUMEs to allow backup of config, logs and databases
+VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
 
-WORKDIR /home/gnuhealth/${BASEFILE}
-
-#RUN curl -SL https://ftp.gnu.org/gnu/health/gnuhealth-setup-latest.tar.gz | tar -xzvf -
-#RUN curl -o ${SETUPFILE} -SL "https://ftp.gnu.org/gnu/health/$SETUPFILE"
-#RUN tar -xzvf ${SETUPFILE}
-COPY gnuhealth-setup gnuhealth-setup
-USER root
-RUN chmod +x gnuhealth-setup
-
-USER gnuhealth
-
-RUN ./gnuhealth-setup install
-
-
-
-# Set the default command to run when starting
-CMD [ "bash" ]
+# Set the default command to run when starting the container
+CMD ["/usr/lib/postgresql/10/bin/postgres", "-D", "/var/lib/postgresql/10/main", "-c", "config_file=/etc/postgresql/10/main/postgresql.conf"]
