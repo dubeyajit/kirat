@@ -10,4 +10,4 @@ echo
 echo ==== Building Production Tool Docker image
 echo
 
-docker build -t eg_postgresql . $@
+docker build -t kirat . $@
